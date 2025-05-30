@@ -33,6 +33,8 @@ class WC_Post_Types {
 		add_action( 'woocommerce_flush_rewrite_rules', array( __CLASS__, 'flush_rewrite_rules' ) );
 		add_filter( 'gutenberg_can_edit_post_type', array( __CLASS__, 'gutenberg_can_edit_post_type' ), 10, 2 );
 		add_filter( 'use_block_editor_for_post_type', array( __CLASS__, 'gutenberg_can_edit_post_type' ), 10, 2 );
+
+		add_filter( 'map_meta_cap', array( __CLASS__, 'hpos_maybe_translate_placeholder_caps' ), 0, 4 );
 	}
 
 	/**
@@ -752,6 +754,41 @@ class WC_Post_Types {
 
 		return $post_types;
 	}
+
+	public static function hpos_maybe_translate_placeholder_caps( $caps, $cap, $user_id, $args ) {
+		if ( ! in_array( $cap, array( 'edit_post', 'delete_post' ), true ) || ! isset( $args[0] ) ) {
+			return $caps;
+		}
+
+		$data_synchronizer = wc_get_container()->get( \Automattic\WooCommerce\Internal\DataStores\Orders\DataSynchronizer::class );
+		$controller        = wc_get_container()->get( \Automattic\WooCommerce\Internal\DataStores\Orders\CustomOrdersTableController::class );
+
+		if ( ! $controller->custom_orders_table_usage_is_enabled() ) {
+			return $caps;
+		}
+
+		if ( $data_synchronizer::PLACEHOLDER_ORDER_POST_TYPE !== get_post_type( $args[0] ) ) {
+			return $caps;
+		}
+
+		$order_type   = \Automattic\WooCommerce\Utilities\OrderUtil::get_order_type(  $args[0] );
+		$wp_post_type = get_post_type_object( $order_type ) ?? get_post_type_object( 'shop_order' );
+
+
+		$new_caps = array_diff( $caps, array( 'edit_others_posts' ) );
+
+		switch ( $cap ) {
+			case 'delete_post':
+				$new_caps[] = $wp_post_type->cap->delete_others_posts;
+				break;
+			case 'edit_post':
+				$new_caps[] = $wp_post_type->cap->edit_others_posts;
+				break;
+		}
+
+		return $new_caps;
+	}
+
 }
 
 WC_Post_types::init();
