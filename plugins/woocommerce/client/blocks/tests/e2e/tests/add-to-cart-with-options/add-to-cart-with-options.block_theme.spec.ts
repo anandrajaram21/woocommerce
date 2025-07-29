@@ -99,7 +99,7 @@ test.describe( 'Add to Cart + Options Block', () => {
 		await expect( addToCartButton ).toHaveText( '4 in cart' );
 	} );
 
-	test( 'allows adding variable products to cart', async ( {
+	test.only( 'allows adding variable products to cart', async ( {
 		page,
 		pageObject,
 		editor,

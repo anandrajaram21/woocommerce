@@ -221,10 +221,9 @@ class AddToCartWithOptions extends AbstractBlock {
 			);
 
 			$context = array(
-				'productId'           => $product->get_id(),
-				'productType'         => $product->get_type(),
-				'quantity'            => array( $product->get_id() => $default_quantity ),
-				'quantityConstraints' => array(),
+				'productId'   => $product->get_id(),
+				'productType' => $product->get_type(),
+				'quantity'    => array( $product->get_id() => $default_quantity ),
 			);
 
 			if ( $product->is_type( 'variable' ) ) {
@@ -266,12 +265,20 @@ class AddToCartWithOptions extends AbstractBlock {
 							? (int) $args['max_value']
 							: null;
 						$step = isset( $args['step'] ) ? (int) $args['step'] : 1;
-						$context['quantityConstraints'][ $child_product_id ] = array(
-							'min'  => $min,
-							'max'  => $max,
-							'step' => $step,
+
+						$children_product_data[ $child_product_id ] = array(
+							'min_value'  => $min,
+							'max_value'  => $max,
+							'step_value' => $step,
 						);
 					}
+
+					wp_interactivity_state(
+						'woocommerce',
+						array(
+							'products' => $children_product_data,
+						)
+					);
 				}
 
 				// Add quantity context for purchasable child products.

@@ -98,8 +98,8 @@ class Utils {
 			$processor->get_attribute( 'type' ) === 'number' &&
 			strpos( $processor->get_attribute( 'name' ), 'quantity' ) !== false
 		) {
-			$processor->set_attribute( 'data-wp-on--input', 'actions.handleQuantityInput' );
-			$processor->set_attribute( 'data-wp-on--change', 'actions.handleQuantityChange' );
+			$processor->set_attribute( 'data-wp-on--input', 'wooocommerce/add-to-cart-with-options::actions.handleQuantityInput' );
+			$processor->set_attribute( 'data-wp-on--change', 'wooocommerce/add-to-cart-with-options::actions.handleQuantityChange' );
 		}
 
 		$quantity_html = $processor->get_updated_html();

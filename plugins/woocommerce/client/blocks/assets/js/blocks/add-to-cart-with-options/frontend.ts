@@ -6,6 +6,7 @@ import { store, getContext } from '@wordpress/interactivity';
 import type {
 	Store as WooCommerce,
 	SelectedAttributes,
+	ProductData,
 } from '@woocommerce/stores/woocommerce/cart';
 import '@woocommerce/stores/woocommerce/product-data';
 import type { Store as StoreNotices } from '@woocommerce/stores/store-notices';
@@ -26,6 +27,7 @@ export type Context = {
 	selectedAttributes: SelectedAttributes[];
 	availableVariations: AvailableVariation[];
 	quantity: Record< number, number >;
+	lastQuantity: number;
 	tempQuantity: number;
 	groupedProductIds: number[];
 	childProductId: number;
@@ -52,15 +54,6 @@ const { state: wooState } = store< WooCommerce >(
 	{ lock: universalLock }
 );
 
-const getDefaultConstraints = (
-	productType: string,
-	childProductId?: number
-) => ( {
-	min: productType === 'grouped' && childProductId ? 0 : 1,
-	step: 1,
-	max: null,
-} );
-
 const getInputElementFromEvent = (
 	event: HTMLElementEvent< HTMLButtonElement, HTMLInputElement >
 ) => {
@@ -77,6 +70,25 @@ const getInputElementFromEvent = (
 	return inputElement;
 };
 
+const getConstraints = (
+	product: ProductData & { id: number },
+	defaults: {
+		minValue?: number;
+		maxValue?: number | null;
+		step?: number;
+	} = {}
+) => {
+	const minValue = product?.min_value || defaults.minValue || 1;
+	const maxValue = product?.max_value || defaults.maxValue || null;
+	const step = product?.step_value || defaults.step || 1;
+
+	return {
+		minValue,
+		maxValue,
+		step,
+	};
+};
+
 const getInputData = (
 	event: HTMLElementEvent< HTMLButtonElement, HTMLInputElement >
 ) => {
@@ -87,27 +99,15 @@ const getInputData = (
 	}
 
 	const parsedValue = parseInt( inputElement.value, 10 );
-	const { productType, productId, quantityConstraints } =
-		getContext< Context >();
 	const childProductId = parseInt(
 		inputElement.name.match( /\[(\d+)\]/ )?.[ 1 ] ?? '0',
 		10
 	);
-	const id = childProductId || productId;
-	const constraints =
-		quantityConstraints?.[ id ] ||
-		getDefaultConstraints( productType, childProductId );
-	const minValue = constraints.min;
-	const maxValue = constraints.max;
-	const step = constraints.step;
 
 	const currentValue = isNaN( parsedValue ) ? 0 : parsedValue;
 
 	return {
 		currentValue,
-		minValue,
-		maxValue,
-		step,
 		childProductId,
 		inputElement,
 	};
@@ -173,6 +173,33 @@ export type AddToCartWithOptionsStore = {
 	};
 };
 
+const getProductObject = (
+	id: number,
+	productType: string,
+	availableVariations: AvailableVariation[],
+	selectedAttributes: SelectedAttributes[]
+): ProductData & { id: number } => {
+	if ( productType === 'variable' ) {
+		const matchedVariation = getMatchedVariation(
+			availableVariations,
+			selectedAttributes
+		);
+		if ( matchedVariation?.variation_id ) {
+			return {
+				id: matchedVariation.variation_id,
+				...wooState?.products?.[ id ]?.variations?.[
+					matchedVariation?.variation_id
+				],
+			};
+		}
+	}
+
+	return {
+		id,
+		...wooState?.products?.[ id ],
+	};
+};
+
 const addToCartWithOptionsStore = store<
 	AddToCartWithOptionsStore &
 		Partial< VariableProductAddToCartWithOptionsStore >
@@ -206,27 +233,28 @@ const addToCartWithOptionsStore = store<
 					quantity,
 					childProductId,
 					productType,
-					quantityConstraints,
 					productId,
 					availableVariations,
 					selectedAttributes,
 				} = getContext< Context >();
 
-				const matchedVariation = getMatchedVariation(
+				const id = childProductId || productId;
+				const productObject = getProductObject(
+					id,
+					productType,
 					availableVariations,
 					selectedAttributes
 				);
 
-				const id =
-					matchedVariation?.variation_id ||
-					childProductId ||
-					productId;
-				const currentQuantity = quantity[ id ] || 0;
-				const constraints =
-					quantityConstraints?.[ id ] ||
-					getDefaultConstraints( productType, childProductId );
-				const minValue = constraints.min;
-				const step = constraints.step;
+				if ( ! productObject ) {
+					return true;
+				}
+
+				const { minValue, step } = getConstraints( productObject, {
+					minValue: childProductId ? 0 : 1,
+				} );
+				const currentQuantity = quantity[ productObject.id ] || 0;
+
 				return currentQuantity - step >= minValue;
 			},
 			get allowsIncrease() {
@@ -234,32 +262,37 @@ const addToCartWithOptionsStore = store<
 					quantity,
 					childProductId,
 					productType,
-					quantityConstraints,
 					productId,
 					availableVariations,
 					selectedAttributes,
 				} = getContext< Context >();
 
-				const matchedVariation = getMatchedVariation(
+				const id = childProductId || productId;
+				const productObject = getProductObject(
+					id,
+					productType,
 					availableVariations,
 					selectedAttributes
 				);
 
-				const id =
-					matchedVariation?.variation_id ||
-					childProductId ||
-					productId;
-				const currentQuantity = quantity[ id ] || 0;
-				const constraints =
-					quantityConstraints?.[ id ] ||
-					getDefaultConstraints( productType, childProductId );
-				const maxValue = constraints.max;
-				const step = constraints.step;
+				if ( ! productObject ) {
+					return true;
+				}
+
+				const { maxValue, step } = getConstraints( productObject );
+				const currentQuantity = quantity[ productObject.id ] || 0;
+
 				return maxValue === null || currentQuantity + step <= maxValue;
+			},
+			get lastQuantity() {
+				const context = getContext< Context >();
+				console.log( context.lastQuantity );
+				return context.lastQuantity;
 			},
 		},
 		actions: {
 			setQuantity( value: number, childProductId?: number ) {
+				console.log( 'setQuantity', value );
 				const context = getContext< Context >();
 
 				if ( context.productType === 'variable' ) {
@@ -269,9 +302,15 @@ const addToCartWithOptionsStore = store<
 						( variation ) => variation.variation_id
 					);
 
+					const variationQuantities: Record< number, number > = {};
 					variationIds.forEach( ( id ) => {
-						context.quantity[ id ] = value;
+						variationQuantities[ id ] = value;
 					} );
+
+					context.quantity = {
+						...context.quantity,
+						...variationQuantities,
+					};
 				} else {
 					const id = childProductId || context.productId;
 
@@ -280,6 +319,8 @@ const addToCartWithOptionsStore = store<
 						[ id ]: value,
 					};
 				}
+
+				context.lastQuantity = value;
 			},
 			increaseQuantity: (
 				event: HTMLElementEvent< HTMLButtonElement >
@@ -288,14 +329,36 @@ const addToCartWithOptionsStore = store<
 				if ( ! inputData ) {
 					return;
 				}
+				const { currentValue, childProductId, inputElement } =
+					inputData;
+
 				const {
-					currentValue,
-					maxValue,
-					minValue,
-					step,
-					childProductId,
-					inputElement,
-				} = inputData;
+					productId,
+					productType,
+					availableVariations,
+					selectedAttributes,
+				} = getContext< Context >();
+
+				const id = childProductId || productId;
+
+				const productObject = getProductObject(
+					id,
+					productType,
+					availableVariations,
+					selectedAttributes
+				);
+
+				if ( ! productObject ) {
+					return;
+				}
+
+				const { minValue, maxValue, step } = getConstraints(
+					productObject,
+					{
+						minValue: childProductId ? 0 : 1,
+					}
+				);
+
 				const newValue = currentValue + step;
 
 				if ( maxValue === null || newValue <= maxValue ) {
@@ -315,14 +378,36 @@ const addToCartWithOptionsStore = store<
 				if ( ! inputData ) {
 					return;
 				}
+				const { currentValue, childProductId, inputElement } =
+					inputData;
+
 				const {
-					currentValue,
-					maxValue,
-					minValue,
-					step,
-					childProductId,
-					inputElement,
-				} = inputData;
+					productId,
+					productType,
+					availableVariations,
+					selectedAttributes,
+				} = getContext< Context >();
+
+				const id = childProductId || productId;
+
+				const productObject = getProductObject(
+					id,
+					productType,
+					availableVariations,
+					selectedAttributes
+				);
+
+				if ( ! productObject ) {
+					return;
+				}
+
+				const { minValue, maxValue, step } = getConstraints(
+					productObject,
+					{
+						minValue: childProductId ? 0 : 1,
+					}
+				);
+
 				const newValue = currentValue - step;
 
 				if ( newValue >= minValue ) {
@@ -359,8 +444,31 @@ const addToCartWithOptionsStore = store<
 				if ( ! inputData ) {
 					return;
 				}
-				const { childProductId, maxValue, minValue, currentValue } =
-					inputData;
+				const { childProductId, currentValue } = inputData;
+
+				const {
+					productId,
+					productType,
+					availableVariations,
+					selectedAttributes,
+				} = getContext< Context >();
+
+				const id = childProductId || productId;
+
+				const productObject = getProductObject(
+					id,
+					productType,
+					availableVariations,
+					selectedAttributes
+				);
+
+				if ( ! productObject ) {
+					return;
+				}
+
+				const { minValue, maxValue } = getConstraints( productObject, {
+					minValue: childProductId ? 0 : 1,
+				} );
 
 				const newValue = Math.min(
 					maxValue ?? Infinity,

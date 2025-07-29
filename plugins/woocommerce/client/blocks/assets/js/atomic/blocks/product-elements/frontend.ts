@@ -47,12 +47,11 @@ const ALLOWED_ATTR = [
 ];
 
 export type Context = {
-	productElementKey:
-		| 'price_html'
-		| 'availability'
-		| 'sku'
-		| 'weight'
-		| 'dimensions';
+	productElementKey: // @todo rename 'productElementKey' to something else.
+	'price_html' | 'availability' | 'sku' | 'weight' | 'dimensions';
+	attributes: {
+		min?: 'min_value';
+	};
 };
 
 const productElementStore = store(
@@ -66,23 +65,49 @@ const productElementStore = store(
 					return;
 				}
 
-				const { productElementKey } = getContext< Context >();
+				const { productElementKey, attributes } =
+					getContext< Context >();
 
-				const productElementHtml =
-					wooState?.products?.[ productDataState?.productId ]
-						?.variations?.[ productDataState?.variationId || 0 ]?.[
-						productElementKey
-					] ||
-					wooState?.products?.[ productDataState?.productId ]?.[
-						productElementKey
-					];
+				const elementsToUpdate = {
+					innerHTML: productElementKey,
+					...attributes,
+				};
 
-				if ( typeof productElementHtml === 'string' ) {
-					element.ref.innerHTML = sanitize( productElementHtml, {
-						ALLOWED_TAGS,
-						ALLOWED_ATTR,
-					} );
-				}
+				Object.entries( elementsToUpdate ).forEach(
+					( [ attribute, valueKey ] ) => {
+						const { productId, variationId } = productDataState;
+
+						if ( ! element.ref || ! productId ) {
+							// @todo why TS needs this?
+							return;
+						}
+
+						const value =
+							wooState?.products?.[ productId ]?.variations?.[
+								variationId || 0
+							]?.[ valueKey ] ||
+							wooState?.products?.[ productId ]?.[ valueKey ];
+
+						if (
+							typeof value === 'string' &&
+							attribute === 'innerHTML'
+						) {
+							element.ref.innerHTML = sanitize( value, {
+								ALLOWED_TAGS,
+								ALLOWED_ATTR,
+							} );
+						} else if (
+							( typeof value === 'number' ||
+								typeof value === 'string' ) &&
+							attribute
+						) {
+							element.ref.setAttribute(
+								attribute,
+								value.toString()
+							);
+						}
+					}
+				);
 			},
 		},
 	},

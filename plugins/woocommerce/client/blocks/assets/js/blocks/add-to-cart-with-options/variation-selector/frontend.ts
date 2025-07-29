@@ -2,7 +2,10 @@
  * External dependencies
  */
 import { store, getContext } from '@wordpress/interactivity';
-import { SelectedAttributes } from '@woocommerce/stores/woocommerce/cart';
+import {
+	SelectedAttributes,
+	type Store as WooCommerce,
+} from '@woocommerce/stores/woocommerce/cart';
 import type { ChangeEvent } from 'react';
 import type { ProductDataStore } from '@woocommerce/stores/woocommerce/product-data';
 
@@ -38,6 +41,12 @@ setStyles();
 // Stores are locked to prevent 3PD usage until the API is stable.
 const universalLock =
 	'I acknowledge that using a private store means my plugin will inevitably break on the next store release.';
+
+const { state: wooState } = store< WooCommerce >(
+	'woocommerce',
+	{},
+	{ lock: universalLock }
+);
 
 /**
  * Check if the attribute value is valid given the other selected attributes and
@@ -144,6 +153,7 @@ export type VariableProductAddToCartWithOptionsStore =
 		callbacks: {
 			setDefaultSelectedAttribute: () => void;
 			setSelectedVariationId: () => void;
+			setValidVariationQuantity: () => void;
 		};
 	};
 
@@ -269,12 +279,17 @@ const { actions, state } = store< VariableProductAddToCartWithOptionsStore >(
 				}
 			},
 			setSelectedVariationId: () => {
-				const { availableVariations, selectedAttributes } =
-					getContext< Context >();
-				const matchedVariation = getMatchedVariation(
+				const {
 					availableVariations,
-					selectedAttributes
-				);
+					selectedAttributes,
+					quantity,
+					productId,
+					productType,
+				} = getContext< Context >();
+
+				if ( productType !== 'variable' ) {
+					return;
+				}
 
 				const { actions: productDataActions } =
 					store< ProductDataStore >(
@@ -282,8 +297,53 @@ const { actions, state } = store< VariableProductAddToCartWithOptionsStore >(
 						{},
 						{ lock: universalLock }
 					);
+
+				const matchedVariation = getMatchedVariation(
+					availableVariations,
+					selectedAttributes
+				);
 				const matchedVariationId = matchedVariation?.variation_id;
+
+				if ( ! matchedVariation || ! matchedVariationId ) {
+					productDataActions.setVariationId(
+						matchedVariationId ?? null
+					);
+					return;
+				}
+
 				productDataActions.setVariationId( matchedVariationId ?? null );
+
+				// Make sure the quantity is a valid value.
+
+				// const productObject =
+				// 	wooState?.products?.[ productId ]?.variations?.[
+				// 		matchedVariation?.variation_id
+				// 	];
+
+				// if ( ! productObject ) {
+				// 	return;
+				// }
+
+				// console.log( 'productObject', productObject );
+				// console.log(
+				// 	'quantity',
+				// 	quantity[ matchedVariationId ],
+				// 	productObject.min_value,
+				// 	productObject.max_value
+				// );
+				// const isValidQuantity =
+				// 	quantity[ matchedVariationId ] >=
+				// 		( productObject.min_value ?? 1 ) &&
+				// 	quantity[ matchedVariationId ] <=
+				// 		( productObject.max_value ?? Infinity );
+				// console.log( 'isValidQuantity', isValidQuantity );
+				// if ( ! isValidQuantity ) {
+				// 	const newQuantity = productObject.min_value ?? 1;
+				// 	if ( newQuantity !== quantity[ matchedVariationId ] ) {
+				// 		console.log( 'setQuantity', newQuantity );
+				// 		actions.setQuantity( newQuantity );
+				// 	}
+				// }
 			},
 		},
 	},
