@@ -1,0 +1,4 @@
+Significance: patch
+Type: update
+
+Remove Header template part from Add to Cart + Options e2e tests to decrease flakiness
