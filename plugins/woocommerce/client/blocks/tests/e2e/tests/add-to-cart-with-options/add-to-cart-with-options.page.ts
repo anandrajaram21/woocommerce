@@ -79,12 +79,27 @@ class AddToCartWithOptionsPage {
 			.click();
 	}
 
+	// The Header template part adds some flakiness to the tests, so we remove it.
+	// See https://github.com/woocommerce/woocommerce/issues/58838#issuecomment-3274382224
+	async removeHeaderTemplatePart() {
+		await this.editor.canvas
+			.getByRole( 'document', { name: 'Block: Header' } )
+			.click();
+		await this.page
+			.getByRole( 'toolbar', { name: 'Block tools' } )
+			.getByLabel( 'Options' )
+			.click();
+		await this.page.getByRole( 'menuitem', { name: 'Delete' } ).click();
+	}
+
 	async updateSingleProductTemplate() {
 		await this.admin.visitSiteEditor( {
 			postId: `${ BLOCK_THEME_SLUG }//single-product`,
 			postType: 'wp_template',
 			canvas: 'edit',
 		} );
+
+		await this.removeHeaderTemplatePart();
 
 		await this.updateAddToCartWithOptionsBlock();
 	}
