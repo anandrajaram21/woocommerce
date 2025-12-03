@@ -73252,12 +73252,6 @@ parameters:
 			path: src/Blocks/BlockTypes/CatalogSorting.php
 
 		-
-			message: '#^Cannot access an offset on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 3
-			path: src/Blocks/BlockTypes/Checkout.php
-
-		-
 			message: '#^Cannot access offset ''address'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
 			count: 1
