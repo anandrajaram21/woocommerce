@@ -16,7 +16,7 @@
   - Flux
 
 "packages/js/components/**/*":
-  - Kirigami
+  - Woo FSE
 
 "packages/js/csv-export/**/*":
   - SomewhereWarm
@@ -25,7 +25,7 @@
   - Rubik
 
 "packages/js/customer-effort-score/**/*":
-  - Kirigami
+  - Woo FSE
 
 "packages/js/data/**/*":
   - Ventures
@@ -40,10 +40,10 @@
   - Flux
 
 "packages/js/experimental/**/*":
-  - Kirigami
+  - Woo FSE
 
 "packages/js/explat/**/*":
-  - Kirigami
+  - Woo FSE
 
 "packages/js/navigation/**/*":
   - SomewhereWarm
@@ -55,7 +55,7 @@
   - Rubik
 
 "packages/js/product-editor/**/*":
-  - Kirigami
+  - Woo FSE
 
 "packages/js/tracks/**/*":
   - Flux
@@ -71,31 +71,31 @@
 
 "plugins/woocommerce/templates/**/*":
   - Rubik
-  - Kirigami
+  - Woo FSE
 
 "plugins/woocommerce/templates/emails/**/*":
   - Ballade
 
 "plugins/woocommerce/src/Admin/**/*":
-  - team: Kirigami
+  - team: Woo FSE
 
 "plugins/woocommerce/src/Blocks/**/*":
   - Rubik
-  - Kirigami
+  - Woo FSE
 
 "plugins/woocommerce/src/Internal/Admin/**/*":
-  - Kirigami
+  - Woo FSE
 
 "plugins/woocommerce/src/StoreApi/**/*":
   - Rubik
-  - Kirigami
+  - Woo FSE
 
 "plugins/woocommerce/client/admin/**/*":
-  - Kirigami
+  - Woo FSE
 
 "plugins/woocommerce/client/blocks/**/*":
   - Rubik
-  - Kirigami
+  - Woo FSE
 
 "plugins/woocommerce-beta-tester/**/*":
   - Flux
