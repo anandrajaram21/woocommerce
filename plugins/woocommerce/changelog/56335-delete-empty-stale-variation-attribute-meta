@@ -1,0 +1,4 @@
+Significance: minor
+Type: fix
+
+Remove empty stale variation attribute metadata without deleting recoverable assignments.

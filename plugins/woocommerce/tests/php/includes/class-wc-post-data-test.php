@@ -252,4 +252,53 @@ class WC_Post_Data_Test extends \WC_Unit_Test_Case {
 		$this->assertSame( array( $product_1->get_id(), $product_2->get_id() ), $synced_ids, 'Each product should be synced at most once per request' );
 		$this->assertEmpty( $wc_deferred_product_sync, 'The queue should be empty after the sync' );
 	}
+
+	/**
+	 * @testdox Should delete only empty variation attribute meta when the parent variation attribute is removed.
+	 */
+	public function test_product_attributes_updated_deletes_only_empty_stale_variation_attribute_meta(): void {
+		$product       = WC_Helper_Product::create_variation_product();
+		$variation_ids = $product->get_children();
+
+		foreach ( $variation_ids as $variation_id ) {
+			update_post_meta( $variation_id, 'attribute_pa_colour', '' );
+		}
+		add_post_meta( $variation_ids[1], 'attribute_pa_colour', 'red' );
+
+		$attributes = $product->get_attributes();
+		unset( $attributes['pa_colour'] );
+		$product->set_attributes( $attributes );
+		$product->save();
+
+		foreach ( $variation_ids as $variation_id ) {
+			if ( $variation_ids[1] !== $variation_id ) {
+				$this->assertFalse( metadata_exists( 'post', $variation_id, 'attribute_pa_colour' ), 'Empty orphaned attribute meta should be deleted' );
+			}
+		}
+		$this->assertSame( 'red', get_post_meta( $variation_ids[1], 'attribute_pa_colour', true ), 'Non-empty orphaned attribute meta should be preserved' );
+		$this->assertSame( 'huge', get_post_meta( $variation_ids[2], 'attribute_pa_size', true ), 'Current variation attribute meta should be preserved' );
+	}
+
+	/**
+	 * @testdox Should preserve variation attribute assignments when the parent is saved with no attributes.
+	 */
+	public function test_product_attributes_updated_preserves_non_empty_meta_when_attributes_are_empty(): void {
+		$product       = WC_Helper_Product::create_variation_product();
+		$variation_ids = $product->get_children();
+
+		foreach ( $variation_ids as $variation_id ) {
+			update_post_meta( $variation_id, 'attribute_pa_size', 'huge' );
+			update_post_meta( $variation_id, 'attribute_pa_colour', 'red' );
+			update_post_meta( $variation_id, 'attribute_pa_number', '2' );
+		}
+
+		$product->set_attributes( array() );
+		$product->save();
+
+		foreach ( $variation_ids as $variation_id ) {
+			$this->assertSame( 'huge', get_post_meta( $variation_id, 'attribute_pa_size', true ), 'Size assignment should be preserved' );
+			$this->assertSame( 'red', get_post_meta( $variation_id, 'attribute_pa_colour', true ), 'Colour assignment should be preserved' );
+			$this->assertSame( '2', get_post_meta( $variation_id, 'attribute_pa_number', true ), 'Number assignment should be preserved' );
+		}
+	}
 }
