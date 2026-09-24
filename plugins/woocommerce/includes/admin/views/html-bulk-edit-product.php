@@ -21,6 +21,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 		<?php do_action( 'woocommerce_product_bulk_edit_start' ); ?>
 
+		<p>
+			<?php
+			/* translators: %s: Link to variable product bulk editing documentation. */
+			printf( wp_kses_post( __( 'Price changes here do not apply to variable products. <a href="%s">Edit their variations instead</a>.', 'woocommerce' ) ), esc_url( 'https://woocommerce.com/document/variable-product/#bulk-editing' ) );
+			?>
+		</p>
+
 		<div class="inline-edit-group">
 			<label class="alignleft">
 				<span class="title"><?php _e( 'Price', 'woocommerce' ); ?></span>

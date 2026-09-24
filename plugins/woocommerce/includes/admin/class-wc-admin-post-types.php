@@ -226,7 +226,7 @@ class WC_Admin_Post_Types {
 	public function bulk_post_updated_messages( $bulk_messages, $bulk_counts ) {
 		$bulk_messages['product'] = array(
 			/* translators: %s: product count */
-			'updated'   => _n( '%s product updated.', '%s products updated.', $bulk_counts['updated'], 'woocommerce' ),
+			'updated'   => _n( '%s product processed by bulk edit.', '%s products processed by bulk edit.', $bulk_counts['updated'], 'woocommerce' ),
 			/* translators: %s: product count */
 			'locked'    => _n( '%s product not updated, somebody is editing it.', '%s products not updated, somebody is editing them.', $bulk_counts['locked'], 'woocommerce' ),
 			/* translators: %s: product count */

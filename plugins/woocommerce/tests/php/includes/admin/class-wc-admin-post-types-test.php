@@ -64,6 +64,15 @@ class WC_Admin_Post_Types_Test extends WC_Unit_Test_Case {
 	}
 
 	/**
+	 * @testdox Bulk edit notices count processed products rather than claiming their prices changed.
+	 */
+	public function test_bulk_edit_notice_reports_processed_products(): void {
+		$messages = $this->sut->bulk_post_updated_messages( array(), array_fill_keys( array( 'updated', 'locked', 'deleted', 'trashed', 'untrashed' ), 1 ) );
+
+		$this->assertSame( '%s product processed by bulk edit.', $messages['product']['updated'] );
+	}
+
+	/**
 	 * @testdox The CPT Add Order screen leaves insertion to WordPress without redirecting or eagerly saving order metadata.
 	 */
 	public function test_new_order_screen_leaves_creation_to_wordpress(): void {
