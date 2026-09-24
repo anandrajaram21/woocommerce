@@ -1,0 +1,4 @@
+Significance: patch
+Type: fix
+
+Clarify bulk price editing for variable products and avoid misleading update notices.
