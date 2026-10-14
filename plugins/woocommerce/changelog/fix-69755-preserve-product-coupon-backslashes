@@ -1,0 +1,4 @@
+Significance: patch
+Type: fix
+
+Preserve backslashes in product and coupon fields saved through the REST API or programmatically.
