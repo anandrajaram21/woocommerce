@@ -29,6 +29,51 @@ class WC_REST_Coupons_Controller_Tests extends WC_REST_Unit_Test_Case {
 	}
 
 	/**
+	 * @testdox Should preserve backslashes and sanitize HTML in REST coupon creates and updates.
+	 * @testWith ["v1", false]
+	 *           ["v1", true]
+	 *           ["v2", false]
+	 *           ["v2", true]
+	 *           ["v3", false]
+	 *           ["v3", true]
+	 *
+	 * @param string $version REST API version.
+	 * @param bool   $update  Whether to update an existing coupon.
+	 */
+	public function test_post_fields_preserve_backslashes( string $version, bool $update ): void {
+		wp_set_current_user( $this->user );
+		if ( 'v3' !== $version ) {
+			$controller = 'v1' === $version ? new WC_REST_Coupons_V1_Controller() : new WC_REST_Coupons_V2_Controller();
+			$controller->register_routes();
+		}
+
+		$route = '/wc/' . $version . '/coupons';
+		if ( $update ) {
+			$coupon = new WC_Coupon();
+			$coupon->set_code( 'baseline-coupon' );
+			$coupon->save();
+			$route .= '/' . $coupon->get_id();
+		}
+
+		$request = new WP_REST_Request( $update ? 'PUT' : 'POST', $route );
+		$request->set_header( 'Content-Type', 'application/json' );
+		$request->set_body(
+			wp_json_encode(
+				array(
+					'code'        => 'save\\10',
+					'description' => '<strong>Path C:\\temp</strong><script>alert(1)</script>',
+				)
+			)
+		);
+		$response = $this->server->dispatch( $request );
+		$this->assertSame( $update ? 200 : 201, $response->get_status(), 'The coupon request should succeed.' );
+
+		$post = get_post( $response->get_data()['id'] );
+		$this->assertSame( 'save\\10', $post->post_title, 'Coupon codes must retain literal backslashes.' );
+		$this->assertSame( '<strong>Path C:\\temp</strong>alert(1)', $post->post_excerpt, 'Descriptions must retain backslashes and allowed HTML, but strip script tags.' );
+	}
+
+	/**
 	 * Get all expected fields.
 	 */
 	public function get_expected_response_fields() {

@@ -42,6 +42,65 @@ class WC_Product_Data_Store_CPT_Test extends WC_Unit_Test_Case {
 	}
 
 	/**
+	 * @testdox Should preserve backslashes in product post fields on create and both update paths.
+	 * @testWith [false, false]
+	 *           [true, false]
+	 *           [true, true]
+	 *
+	 * @param bool $update    Whether to update an existing product.
+	 * @param bool $save_post Whether to save during the save_post action.
+	 */
+	public function test_post_fields_preserve_backslashes( bool $update, bool $save_post ): void {
+		$product = new WC_Product_Simple();
+		if ( $update ) {
+			$product->set_name( 'Baseline product' );
+			$product->save();
+		}
+
+		$product->set_name( 'Cable 1\\2 inch' );
+		$product->set_description( 'Path C:\\temp' );
+		$product->set_short_description( 'Short C:\\temp' );
+		$product->set_post_password( 'Password\\123' );
+
+		if ( $save_post ) {
+			add_action(
+				'save_post',
+				static function () use ( $product ) {
+					$product->save();
+				}
+			);
+			do_action( 'save_post', $product->get_id(), get_post( $product->get_id() ), true );
+		} else {
+			$product->save();
+		}
+
+		$post = get_post( $product->get_id() );
+		$this->assertSame( 'Cable 1\\2 inch', $post->post_title, 'The stored product name must retain its backslash.' );
+		$this->assertSame( 'Path C:\\temp', $post->post_content, 'The stored description must retain its backslash.' );
+		$this->assertSame( 'Short C:\\temp', $post->post_excerpt, 'The stored short description must retain its backslash.' );
+		$this->assertSame( 'Password\\123', $post->post_password, 'The stored password must retain its backslash.' );
+	}
+
+	/**
+	 * @testdox Should preserve unslashed product post fields returned by the creation filter.
+	 */
+	public function test_create_preserves_backslashes_from_filter(): void {
+		add_filter(
+			'woocommerce_new_product_data',
+			static function ( $data ) {
+				$data['post_title'] = 'Filtered 1\\2 inch';
+				return $data;
+			}
+		);
+
+		$product = new WC_Product_Simple();
+		$product->set_name( 'Baseline product' );
+		$product->save();
+
+		$this->assertSame( 'Filtered 1\\2 inch', get_post( $product->get_id() )->post_title, 'Filter output must be slashed before WordPress stores it.' );
+	}
+
+	/**
 	 * @testdox Variations should appear when searching for parent product's SKU.
 	 */
 	public function test_variation_searches_parent_sku() {

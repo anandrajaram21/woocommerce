@@ -14,6 +14,53 @@ class WC_REST_Products_Controller_Tests extends WC_Unit_Test_Case {
 	use MetaDataAssertionTrait;
 
 	/**
+	 * @testdox Should preserve backslashes and sanitize HTML in REST product creates and updates.
+	 * @testWith ["v1", false]
+	 *           ["v1", true]
+	 *           ["v2", false]
+	 *           ["v2", true]
+	 *           ["v3", false]
+	 *           ["v3", true]
+	 *
+	 * @param string $version REST API version.
+	 * @param bool   $update  Whether to update an existing product.
+	 */
+	public function test_post_fields_preserve_backslashes( string $version, bool $update ): void {
+		wp_set_current_user( $this->user );
+		if ( 'v3' !== $version ) {
+			$controller = 'v1' === $version ? new WC_REST_Products_V1_Controller() : new WC_REST_Products_V2_Controller();
+			$controller->register_routes();
+		}
+
+		$route = '/wc/' . $version . '/products';
+		if ( $update ) {
+			$product = new WC_Product_Simple();
+			$product->set_name( 'Baseline product' );
+			$product->save();
+			$route .= '/' . $product->get_id();
+		}
+
+		$request = new WP_REST_Request( $update ? 'PUT' : 'POST', $route );
+		$request->set_header( 'Content-Type', 'application/json' );
+		$request->set_body(
+			wp_json_encode(
+				array(
+					'name'              => 'Cable 1\\2 "inch"',
+					'description'       => '<strong>Path C:\\temp</strong><script>alert(1)</script>',
+					'short_description' => 'Short C:\\temp',
+				)
+			)
+		);
+		$response = $this->server->dispatch( $request );
+		$this->assertSame( $update ? 200 : 201, $response->get_status(), 'The product request should succeed.' );
+
+		$post = get_post( $response->get_data()['id'] );
+		$this->assertSame( 'Cable 1\\2 "inch"', $post->post_title, 'Product names must retain literal backslashes and quotes.' );
+		$this->assertSame( '<strong>Path C:\\temp</strong>alert(1)', $post->post_content, 'Descriptions must retain backslashes and allowed HTML, but strip script tags.' );
+		$this->assertSame( 'Short C:\\temp', $post->post_excerpt, 'Short descriptions must retain literal backslashes.' );
+	}
+
+	/**
 	 * REST server used to dispatch product requests.
 	 *
 	 * @var WP_REST_Server

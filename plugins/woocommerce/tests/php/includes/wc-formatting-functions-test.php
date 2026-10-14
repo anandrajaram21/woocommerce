@@ -57,6 +57,24 @@ class WC_Formatting_Functions_Test extends \WC_Unit_Test_Case {
 	}
 
 	/**
+	 * @testdox Should preserve coupon code backslashes while sanitizing HTML for both permission paths.
+	 * @testWith [false]
+	 *           [true]
+	 *
+	 * @param bool $unfiltered_html Whether the user can save unfiltered HTML.
+	 */
+	public function test_wc_sanitize_coupon_code_preserves_backslashes( bool $unfiltered_html ): void {
+		$user = self::factory()->user->create( array( 'role' => 'subscriber' ) );
+		if ( $unfiltered_html ) {
+			get_user_by( 'id', $user )->add_cap( 'unfiltered_html' );
+		}
+		wp_set_current_user( $user );
+
+		$this->assertSame( 'save\\10', wc_sanitize_coupon_code( '<strong>save\\10</strong>' ), 'Coupon code sanitization must preserve backslashes and remove HTML tags.' );
+		$this->assertSame( 'save\\10', wc_format_coupon_code( wc_format_coupon_code( 'save\\10' ) ), 'Repeated coupon formatting must not remove or double backslashes.' );
+	}
+
+	/**
 	 * Data provider for test_wc_format_postcode.
 	 *
 	 * @return array[]

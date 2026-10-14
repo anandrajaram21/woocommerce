@@ -393,8 +393,8 @@ function wc_format_coupon_code( $value ) {
  * @return string
  */
 function wc_sanitize_coupon_code( $value ) {
-	$value = wp_kses( sanitize_post_field( 'post_title', html_entity_decode( $value ?? '', ENT_COMPAT, get_bloginfo( 'charset' ) ), 0, 'db' ), 'entities' );
-	return current_user_can( 'unfiltered_html' ) ? $value : stripslashes( $value );
+	$value = wp_kses( sanitize_post_field( 'post_title', wp_slash( html_entity_decode( $value ?? '', ENT_COMPAT, get_bloginfo( 'charset' ) ) ), 0, 'db' ), 'entities' );
+	return wp_unslash( $value );
 }
 
 /**

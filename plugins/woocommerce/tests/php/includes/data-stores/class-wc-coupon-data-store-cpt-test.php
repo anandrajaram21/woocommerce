@@ -71,6 +71,61 @@ class WC_Coupon_Data_Store_CPT_Test extends WC_Unit_Test_Case {
 	}
 
 	/**
+	 * @testdox Should preserve backslashes in coupon post fields on create and both update paths.
+	 * @testWith [false, false]
+	 *           [true, false]
+	 *           [true, true]
+	 *
+	 * @param bool $update    Whether to update an existing coupon.
+	 * @param bool $save_post Whether to save during the save_post action.
+	 */
+	public function test_post_fields_preserve_backslashes( bool $update, bool $save_post ): void {
+		$coupon = new WC_Coupon();
+		if ( $update ) {
+			$coupon->set_code( 'baseline-coupon' );
+			$coupon->save();
+		}
+
+		$coupon->set_code( 'save\\10' );
+		$coupon->set_description( 'Path C:\\temp' );
+
+		if ( $save_post ) {
+			add_action(
+				'save_post',
+				static function () use ( $coupon ) {
+					$coupon->save();
+				}
+			);
+			do_action( 'save_post', $coupon->get_id(), get_post( $coupon->get_id() ), true );
+		} else {
+			$coupon->save();
+		}
+
+		$post = get_post( $coupon->get_id() );
+		$this->assertSame( 'save\\10', $post->post_title, 'The stored coupon code must retain its backslash.' );
+		$this->assertSame( 'Path C:\\temp', $post->post_excerpt, 'The stored coupon description must retain its backslash.' );
+	}
+
+	/**
+	 * @testdox Should preserve unslashed coupon post fields returned by the creation filter.
+	 */
+	public function test_create_preserves_backslashes_from_filter(): void {
+		add_filter(
+			'woocommerce_new_coupon_data',
+			static function ( $data ) {
+				$data['post_title'] = 'filtered\\10';
+				return $data;
+			}
+		);
+
+		$coupon = new WC_Coupon();
+		$coupon->set_code( 'baseline-coupon' );
+		$coupon->save();
+
+		$this->assertSame( 'filtered\\10', get_post( $coupon->get_id() )->post_title, 'Filter output must be slashed before WordPress stores it.' );
+	}
+
+	/**
 	 * @testdox Should not accumulate props across repeated saves of the same coupon object.
 	 */
 	public function test_updated_props_do_not_accumulate_across_saves(): void {

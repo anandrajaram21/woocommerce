@@ -83,17 +83,25 @@ class WC_Coupon_Data_Store_CPT extends WC_Data_Store_WP implements WC_Coupon_Dat
 		}
 
 		$coupon_id = wp_insert_post(
-			apply_filters(
-				'woocommerce_new_coupon_data',
-				array(
-					'post_type'     => 'shop_coupon',
-					'post_status'   => $coupon->get_status( 'edit' ) ? $coupon->get_status( 'edit' ) : 'publish',
-					'post_author'   => get_current_user_id(),
-					'post_title'    => $coupon->get_code( 'edit' ),
-					'post_content'  => '',
-					'post_excerpt'  => $coupon->get_description( 'edit' ),
-					'post_date'     => gmdate( 'Y-m-d H:i:s', $coupon->get_date_created()->getOffsetTimestamp() ),
-					'post_date_gmt' => gmdate( 'Y-m-d H:i:s', $coupon->get_date_created()->getTimestamp() ),
+			wp_slash(
+				/**
+				 * Filters the unslashed post data when creating a coupon.
+				 *
+				 * @since 3.0.0
+				 * @param array $data Coupon post data.
+				 */
+				(array) apply_filters(
+					'woocommerce_new_coupon_data',
+					array(
+						'post_type'     => 'shop_coupon',
+						'post_status'   => $coupon->get_status( 'edit' ) ? $coupon->get_status( 'edit' ) : 'publish',
+						'post_author'   => get_current_user_id(),
+						'post_title'    => $coupon->get_code( 'edit' ),
+						'post_content'  => '',
+						'post_excerpt'  => $coupon->get_description( 'edit' ),
+						'post_date'     => gmdate( 'Y-m-d H:i:s', $coupon->get_date_created()->getOffsetTimestamp() ),
+						'post_date_gmt' => gmdate( 'Y-m-d H:i:s', $coupon->get_date_created()->getTimestamp() ),
+					)
 				)
 			),
 			true
@@ -215,7 +223,7 @@ class WC_Coupon_Data_Store_CPT extends WC_Data_Store_WP implements WC_Coupon_Dat
 				$GLOBALS['wpdb']->update( $GLOBALS['wpdb']->posts, $post_data, array( 'ID' => $coupon->get_id() ) );
 				clean_post_cache( $coupon->get_id() );
 			} else {
-				wp_update_post( array_merge( array( 'ID' => $coupon->get_id() ), $post_data ) );
+				wp_update_post( wp_slash( array_merge( array( 'ID' => $coupon->get_id() ), $post_data ) ) );
 			}
 			$coupon->read_meta_data( true ); // Refresh internal meta data, in case things were hooked into `save_post` or another WP hook.
 		}
