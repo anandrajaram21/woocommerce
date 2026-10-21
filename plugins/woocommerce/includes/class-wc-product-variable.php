@@ -473,8 +473,24 @@ class WC_Product_Variable extends WC_Product {
 			$variation_gallery_html = wc_get_product_gallery_html( $this, $gallery_html_ids );
 		}
 
-		// See if prices should be shown for each variation after selection.
-		$show_variation_price = apply_filters( 'woocommerce_show_variation_price', $variation->get_price() === '' || $this->get_variation_sale_price( 'min' ) !== $this->get_variation_sale_price( 'max' ) || $this->get_variation_regular_price( 'min' ) !== $this->get_variation_regular_price( 'max' ), $this, $variation );
+		// See if prices should be shown for each variation after selection. A suffix with
+		// dynamic values, for example {price_including_tax}, never shows on the parent price,
+		// so the variation price is the only place it can appear.
+		$show_variation_price = $variation->get_price() === ''
+			|| $this->get_variation_sale_price( 'min' ) !== $this->get_variation_sale_price( 'max' )
+			|| $this->get_variation_regular_price( 'min' ) !== $this->get_variation_regular_price( 'max' )
+			|| '' !== $variation->get_price_suffix();
+
+		/**
+		 * Filters whether the price shows for a variation after the customer selects it.
+		 *
+		 * @since 2.4.0
+		 *
+		 * @param bool                  $show_variation_price True to show the variation price.
+		 * @param WC_Product_Variable   $product              Variable product.
+		 * @param WC_Product_Variation  $variation            Variation.
+		 */
+		$show_variation_price = apply_filters( 'woocommerce_show_variation_price', $show_variation_price, $this, $variation );
 
 		return apply_filters(
 			'woocommerce_available_variation',

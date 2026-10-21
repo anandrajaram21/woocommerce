@@ -41,6 +41,90 @@ class WC_Product_Variable_Test extends \WC_Unit_Test_Case {
 	}
 
 	/**
+	 * @testdox 'get_available_variations' includes the price suffix when all variations have the same price.
+	 */
+	public function test_get_available_variations_includes_price_suffix_when_variation_prices_match(): void {
+		$product = $this->create_variable_product_with_equal_prices();
+		$this->enable_price_display_suffix();
+
+		$variations = $product->get_available_variations();
+
+		$this->assertStringContainsString( 'woocommerce-price-suffix', $variations[0]['price_html'], 'The variation price must include the configured suffix.' );
+		$this->assertStringContainsString( '(inc vat)', $variations[0]['price_html'], 'The suffix text must be present.' );
+		$this->assertStringContainsString( '11.00', $variations[0]['price_html'], 'The suffix must show the tax-inclusive price.' );
+	}
+
+	/**
+	 * @testdox 'get_available_variations' omits the price when all variations have the same price and no suffix is configured.
+	 */
+	public function test_get_available_variations_omits_price_when_variation_prices_match_without_suffix(): void {
+		$product = $this->create_variable_product_with_equal_prices();
+
+		$variations = $product->get_available_variations();
+
+		$this->assertSame( '', $variations[0]['price_html'], 'The price must not repeat when it adds nothing.' );
+	}
+
+	/**
+	 * @testdox 'get_available_variations' hides the price when the show variation price filter returns false.
+	 */
+	public function test_get_available_variations_hides_price_when_show_variation_price_filter_returns_false(): void {
+		$product = $this->create_variable_product_with_equal_prices();
+		$this->enable_price_display_suffix();
+		add_filter( 'woocommerce_show_variation_price', '__return_false' );
+
+		$variations = $product->get_available_variations();
+
+		$this->assertSame( '', $variations[0]['price_html'], 'An explicit filter value must win over the default.' );
+	}
+
+	/**
+	 * Create a variable product whose variations all cost the same.
+	 *
+	 * @return WC_Product_Variable
+	 */
+	private function create_variable_product_with_equal_prices(): WC_Product_Variable {
+		$product = WC_Helper_Product::create_variation_product();
+
+		foreach ( $product->get_children() as $variation_id ) {
+			$variation = wc_get_product( $variation_id );
+			$variation->set_regular_price( '10' );
+			$variation->set_sale_price( '' );
+			$variation->set_price( '10' );
+			$variation->save();
+		}
+
+		WC_Product_Variable::sync( $product->get_id() );
+		wc_delete_product_transients( $product->get_id() );
+
+		return wc_get_product( $product->get_id() );
+	}
+
+	/**
+	 * Configure a price display suffix that shows the tax-inclusive price.
+	 */
+	private function enable_price_display_suffix(): void {
+		update_option( 'woocommerce_calc_taxes', 'yes' );
+		update_option( 'woocommerce_prices_include_tax', 'no' );
+		update_option( 'woocommerce_tax_display_shop', 'excl' );
+		update_option( 'woocommerce_price_display_suffix', '{price_including_tax} (inc vat)' );
+
+		WC_Tax::_insert_tax_rate(
+			array(
+				'tax_rate_country'  => '',
+				'tax_rate_state'    => '',
+				'tax_rate'          => '10.0000',
+				'tax_rate_name'     => 'VAT',
+				'tax_rate_priority' => 1,
+				'tax_rate_compound' => 0,
+				'tax_rate_shipping' => 0,
+				'tax_rate_order'    => 0,
+				'tax_rate_class'    => '',
+			)
+		);
+	}
+
+	/**
 	 * @testdox 'has_purchasable_variations' should return true when all variations are purchasable.
 	 */
 	public function test_has_purchasable_variations_returns_true_when_all_variations_are_purchasable() {

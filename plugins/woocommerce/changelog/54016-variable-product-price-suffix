@@ -1,0 +1,4 @@
+Significance: patch
+Type: fix
+
+Show the price display suffix on the selected variation when all variations have the same price.
